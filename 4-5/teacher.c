@@ -12,19 +12,16 @@ int main(int argc, char *argv[]) {
         printf("Использование: %s <IP-адрес> <порт сервера> <количество клиентов>\n", argv[0]);
         return 1;
     }
-
+    srand(time(NULL));
     int serverSocket, portNum, nBytes;
     char buffer[BUFFER_SIZE];
     struct sockaddr_in serverAddr, clientAddr;
     socklen_t addr_size;
 
-    // Создание сокета
     if ((serverSocket = socket(AF_INET, SOCK_DGRAM, 0)) == ERROR) {
         perror("Error creating socket");
         return 1;
     }
-
-    // Заполнение структуры адреса сервера
     memset(&serverAddr, 0, sizeof(serverAddr));
     serverAddr.sin_family = AF_INET;
     serverAddr.sin_port = htons(atoi(argv[2]));
@@ -33,16 +30,14 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    // Привязка сокета к IP и порту
     if (bind(serverSocket, (struct sockaddr *) &serverAddr, sizeof(serverAddr)) == ERROR) {
         perror("Error binding socket");
         return 1;
     }
 
-    printf("Server started. Waiting for messages...\n");
+    printf("Сервер начал работу\n");
     int num_clients = atoi(argv[3]);
-    for (int i = 0; i < num_clients; i++) {
-        // Ожидание получения запроса на билет от клиента
+    for (int i = 1; i <= num_clients; i++) {
         addr_size = sizeof(clientAddr);
         if ((nBytes = recvfrom(serverSocket, buffer, BUFFER_SIZE, 0,
                                (struct sockaddr *) &clientAddr, &addr_size)) == ERROR) {
@@ -51,23 +46,19 @@ int main(int argc, char *argv[]) {
         }
 
         buffer[nBytes] = '\0';
-
-        // Генерация номера билета
-        // Вместо этого может быть добавлена ваша логика генерации номера билета
         char ticketNumber[10];
         sprintf(ticketNumber, "%d", rand() % 1000);
 
-        // Отправка номера билета клиенту
         if (sendto(serverSocket, ticketNumber, strlen(ticketNumber), 0,
                    (struct sockaddr *) &clientAddr, sizeof(clientAddr)) == ERROR) {
             perror("Error sending message");
             return 1;
         }
+        char num[10];
+        sprintf(num, "%d", i);
+        printf("Отправлен билет номер %s студенту %s\n",
+               ticketNumber, num);
 
-        printf("Sent ticket number %s to %s:%d\n",
-               ticketNumber, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
-
-        // Ожидание получения ответа от клиента
         addr_size = sizeof(clientAddr);
         if ((nBytes = recvfrom(serverSocket, buffer, BUFFER_SIZE, 0,
                                (struct sockaddr *) &clientAddr, &addr_size)) == ERROR) {
@@ -77,28 +68,23 @@ int main(int argc, char *argv[]) {
 
         buffer[nBytes] = '\0';
 
-        // Вывод сообщения о полученном ответе
-        printf("Received answer for ticket number %s from %s:%d\n",
-               ticketNumber, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+        printf("Получен ответ на номер %s от студента %s\n",
+               ticketNumber, num);
 
-        // Пример генерации оценки
-        // Вместо этого может быть добавлена ваша логика оценивания
-        char grade[10];
-        strcpy(grade, "A+");
+        int grade = (rand() % 10) + 1;
+        char grade_str[3];
+        snprintf(grade_str, sizeof(grade_str), "%d", grade);
 
-        // Отправка оценки клиенту
-        if (sendto(serverSocket, grade, strlen(grade), 0,
+        if (sendto(serverSocket, grade_str, strlen(grade_str), 0,
                    (struct sockaddr *) &clientAddr, sizeof(clientAddr)) == ERROR) {
             perror("Error sending message");
             return 1;
         }
 
-        printf("Sent grade %s to %s:%d\n",
-               grade, inet_ntoa(clientAddr.sin_addr), ntohs(clientAddr.sin_port));
+        printf("Отправлена оценка %s студенту %s\n",
+               grade_str, num);
     }
 
-    // Закрытие сокета
     close(serverSocket);
-
     return 0;
 }
